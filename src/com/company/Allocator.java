@@ -39,7 +39,8 @@ public class Allocator {
         System.arraycopy(byteBlockSize, 0, desciptors, startIndex + 8, 4);
     }
 
-    public int mem_alloc(int memory) {
+    public int mem_alloc(int mem) {
+        int memory  = Util.findNearestNumberOfPow2(mem); // move number to the nearest 2^x;
         if (memory > pageSize / 2 && freePagesCount * pageSize >= memory) {
             int firstNotDividedPage = findNotDividedPage();
             for (int itter = 0; itter < memory / pageSize; itter++) {
@@ -215,7 +216,6 @@ public class Allocator {
             int blockSize = getSizeOfblockDescriptor(descriptor);
             int count = getCountOfFreeBlockDescriptor(descriptor);
             int blockIndex = getFreeBlockIndexDescriptor(descriptor);
-            String freeBlockIndex = count == 0 && blockSize != 0 ? "None" : Integer.toString(blockIndex);
             String pageType;
             if (blockSize == 0) {
                 pageType = "Free";
@@ -224,6 +224,8 @@ public class Allocator {
             } else {
                 pageType = "Multiple";
             }
+            String freeBlockIndex = count == 0 && blockSize != 0 ? "None" : Integer.toString(blockIndex);
+
             System.out.println("Page : " + indexOfPage + " Descriptor : " + "block_size : " + blockSize +
                     ", block_counter :" + count +
                     ", first_empty_block : " + freeBlockIndex + " , page_type : " + pageType
