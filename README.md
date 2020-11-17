@@ -23,8 +23,8 @@ Futher i described the structure of "Descriptor".
 
 We have two cases of allocation memory .
 
-- `size` >= pageSize/2 . Memory size is bigger or equal half of the page size
-- `size` < pageSize/2   . Memory size is less than half of the page size
+- `size` > pageSize/2 . Memory size is bigger  half of the page size
+- `size` <= pageSize/2   . Memory size is less or equal than half of the page size
     
 When size larger than a half of the page size ,we must to determine the number of pages needed to satisfy requestfind needed number of free page . Find free pages for allocation memory and
  after previous two steps allocate block of memory.
@@ -38,10 +38,10 @@ When size larger than a half of the page size ,we must to determine the number o
 
 We also has two cases of freeing memory.
 
-- free block with `size` less than half of the page .
-- free block with size more or equal than half of the page .
+- free block with `size` less or equal than half of the page .
+- free block with size more than half of the page .
 
-When `size` less than half of the page , we just define new next free block index , increment free block counter , and put it all into page desciptor.
+When `size` less or equal than half of the page , we just define new next free block index , increment free block counter , and put it all into page desciptor.
 Otherwise we take all pages from HashMap by block size and put array of zeros to `desciptors` array for the pages which contain this MultiplePage 
 
 ### Memory Realloc

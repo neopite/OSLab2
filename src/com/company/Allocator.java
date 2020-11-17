@@ -19,7 +19,7 @@ public class Allocator {
         this.pageSize = pageSize;
         this.mem = new byte[size];
         this.desciptors = new byte[size / pageSize * DESCRIPTOR_SIZE];
-        this.freePagesCount = size/pageSize;
+        this.freePagesCount = size / pageSize;
     }
 
 
@@ -40,7 +40,7 @@ public class Allocator {
     }
 
     public int mem_alloc(int memory) {
-        if (memory > pageSize / 2 && freePagesCount*pageSize>= memory) {
+        if (memory > pageSize / 2 && freePagesCount * pageSize >= memory) {
             int firstNotDividedPage = findNotDividedPage();
             for (int itter = 0; itter < memory / pageSize; itter++) {
                 int notDividedPage = findNotDividedPage();
@@ -49,7 +49,10 @@ public class Allocator {
                 freePagesCount--;
             }
             return firstNotDividedPage * pageSize;
+        } else if (memory > pageSize / 2 && freePagesCount * pageSize < memory) {
+            return -1;
         }
+
         List<Integer> pagesWithSameSize = hashMap.get(memory);
         if (pagesWithSameSize == null || pagesWithSameSize.size() == 0) {
             int notDividedPage = findNotDividedPage();
@@ -69,17 +72,17 @@ public class Allocator {
     }
 
     public void mem_free(int index) {
-        int page = index / pageSize;    // get page number by index
-        byte [] descriptorDelete = {0,0,0,0,0,0,0,0,0,0,0,0};
+        int page = index / pageSize;
+        byte[] descriptorDelete = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         byte[] descriptorByPage = Arrays.copyOfRange(desciptors, page * DESCRIPTOR_SIZE, page * DESCRIPTOR_SIZE + DESCRIPTOR_SIZE);
         int freeBlocksOfPage = UtilByte.byteInInt(Arrays.copyOfRange(descriptorByPage, 4, 8));
         int blockSize = UtilByte.byteInInt(Arrays.copyOfRange(descriptorByPage, 8, 12));
-         if (freeBlocksOfPage == 0 && blockSize >= pageSize) {
+        if (freeBlocksOfPage == 0 && blockSize >= pageSize) {
             List<Integer> pagesWhichBlockOccupied = hashMap.get(blockSize);
             for (int itter = 0; itter < pagesWhichBlockOccupied.size(); itter++) {
                 int pageNumber = pagesWhichBlockOccupied.get(itter);
-                System.arraycopy(descriptorDelete,0,desciptors
-                        ,pageNumber*DESCRIPTOR_SIZE,
+                System.arraycopy(descriptorDelete, 0, desciptors
+                        , pageNumber * DESCRIPTOR_SIZE,
                         DESCRIPTOR_SIZE);
                 freePagesCount++;
             }
@@ -87,39 +90,38 @@ public class Allocator {
                 deletePageFromMap(pagesWhichBlockOccupied.get(0));
             }
 
-        }else if (freeBlocksOfPage == 0) {
+        } else if (freeBlocksOfPage == 0) {
             byte[] newEmptyBlockIndex = UtilByte.intInByte(index);
             System.arraycopy(newEmptyBlockIndex, 0, desciptors, page * DESCRIPTOR_SIZE, newEmptyBlockIndex.length);
             List<Integer> ar = new ArrayList<>();
             ar.add(page);
-            hashMap.put(blockSize,ar);
-            updateBlockCountInDescriptor(page,1);
-        }else if(freeBlocksOfPage+1 == pageSize/blockSize){
+            hashMap.put(blockSize, ar);
+            updateBlockCountInDescriptor(page, 1);
+        } else if (freeBlocksOfPage + 1 == pageSize / blockSize) {
             hashMap.remove(blockSize);
-            System.arraycopy(descriptorDelete,0,desciptors,DESCRIPTOR_SIZE*page , descriptorDelete.length);
+            System.arraycopy(descriptorDelete, 0, desciptors, DESCRIPTOR_SIZE * page, descriptorDelete.length);
             freePagesCount++;
-        }
-        else {
+        } else {
             byte[] emptyFirstBlockIndex = Arrays.copyOfRange(descriptorByPage, 0, 4);
             byte[] updatedFirstBlockIndex = UtilByte.intInByte(index);
             System.arraycopy(emptyFirstBlockIndex, 0, mem, index, emptyFirstBlockIndex.length);
             System.arraycopy(updatedFirstBlockIndex, 0, desciptors, page * DESCRIPTOR_SIZE, updatedFirstBlockIndex.length);
-            updateBlockCountInDescriptor(page,1);
+            updateBlockCountInDescriptor(page, 1);
         }
     }
 
-    public int mem_realloc(int size , int indexOfBlock){
+    public int mem_realloc(int size, int indexOfBlock) {
         int page = indexOfBlock / pageSize;
-        byte [] desciptorOfBlock = Arrays.copyOfRange(desciptors,page*DESCRIPTOR_SIZE,page*DESCRIPTOR_SIZE+DESCRIPTOR_SIZE);
+        byte[] desciptorOfBlock = Arrays.copyOfRange(desciptors, page * DESCRIPTOR_SIZE, page * DESCRIPTOR_SIZE + DESCRIPTOR_SIZE);
         int blockSize = getSizeOfblockDescriptor(desciptorOfBlock);
-        if(blockSize==0){
+        if (blockSize == 0) {
             return mem_alloc(size);
-        }else if(blockSize > pageSize){
+        } else if (blockSize > pageSize) {
             mem_free(indexOfBlock);
-            return  mem_alloc(size);
-        }else if(blockSize < pageSize){
+            return mem_alloc(size);
+        } else if (blockSize < pageSize) {
             mem_free(indexOfBlock);
-             return mem_alloc(size);
+            return mem_alloc(size);
         }
         return -1;
     }
@@ -137,21 +139,21 @@ public class Allocator {
         return -1;
     }
 
-    private int putBlockIntoDividedPage(int index) {
-        byte[] descriptor = Arrays.copyOfRange(desciptors, index * DESCRIPTOR_SIZE, index * DESCRIPTOR_SIZE + DESCRIPTOR_SIZE);
+    private int putBlockIntoDividedPage(int indexOfPage) {
+        byte[] descriptor = Arrays.copyOfRange(desciptors, indexOfPage * DESCRIPTOR_SIZE, indexOfPage * DESCRIPTOR_SIZE + DESCRIPTOR_SIZE);
         int indexOfEmptyBlock = UtilByte.byteInInt(Arrays.copyOfRange(descriptor, 0, 4));
-        int  count = UtilByte.byteInInt(Arrays.copyOfRange(descriptor, 4, 8));
+        int count = UtilByte.byteInInt(Arrays.copyOfRange(descriptor, 4, 8));
         if (count == 1) {
-            deletePageFromMap(index);
+            deletePageFromMap(indexOfPage);
             int num = UtilByte.byteInInt(Arrays.copyOfRange(mem, indexOfEmptyBlock, indexOfEmptyBlock + 4));
             byte[] firstEmptyBlockIndex = UtilByte.intInByte(num);
-            System.arraycopy(firstEmptyBlockIndex, 0, desciptors, index * DESCRIPTOR_SIZE, firstEmptyBlockIndex.length);
-            updateBlockCountInDescriptor(index,-1);
+            System.arraycopy(firstEmptyBlockIndex, 0, desciptors, indexOfPage * DESCRIPTOR_SIZE, firstEmptyBlockIndex.length);
+            updateBlockCountInDescriptor(indexOfPage, -1);
         } else {
             int num = UtilByte.byteInInt(Arrays.copyOfRange(mem, indexOfEmptyBlock, indexOfEmptyBlock + 4));
             byte[] firstEmptyBlockIndex = UtilByte.intInByte(num);
-            updateBlockCountInDescriptor(index,-1);
-            System.arraycopy(firstEmptyBlockIndex, 0, desciptors, index * DESCRIPTOR_SIZE, firstEmptyBlockIndex.length);
+            updateBlockCountInDescriptor(indexOfPage, -1);
+            System.arraycopy(firstEmptyBlockIndex, 0, desciptors, indexOfPage * DESCRIPTOR_SIZE, firstEmptyBlockIndex.length);
         }
         return indexOfEmptyBlock;
     }
@@ -211,18 +213,18 @@ public class Allocator {
         for (int indexOfPage = 0; indexOfPage < size / pageSize; indexOfPage++) {
             byte[] descriptor = getPagesDescriptor(indexOfPage);
             int blockSize = getSizeOfblockDescriptor(descriptor);
-            int count =  getCountOfFreeBlockDescriptor(descriptor);
+            int count = getCountOfFreeBlockDescriptor(descriptor);
             int blockIndex = getFreeBlockIndexDescriptor(descriptor);
-            String freeBlockIndex =  count==0 && blockSize!=0? "None" : Integer.toString(blockIndex);
-            String pageType ;
-            if(blockSize==0){
+            String freeBlockIndex = count == 0 && blockSize != 0 ? "None" : Integer.toString(blockIndex);
+            String pageType;
+            if (blockSize == 0) {
                 pageType = "Free";
-            }else if(blockSize<=pageSize/2){
+            } else if (blockSize <= pageSize / 2) {
                 pageType = "Divided";
-            }else {
+            } else {
                 pageType = "Multiple";
             }
-            System.out.println("Page : " + indexOfPage +" Descriptor : " + "block_size : " + blockSize +
+            System.out.println("Page : " + indexOfPage + " Descriptor : " + "block_size : " + blockSize +
                     ", block_counter :" + count +
                     ", first_empty_block : " + freeBlockIndex + " , page_type : " + pageType
 
